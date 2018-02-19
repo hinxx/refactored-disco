@@ -17,23 +17,27 @@ def test1(input1, input2):
 #    print("Called test1()\n")
 #    print("input1:", input1)
 #    print("input2:", input2)
-    
+
+    datas = []
     print("test1(): We have:", q.qsize())
     try:
-        data = q.get(True, 1.0)
+        while True:
+            datas.append(q.get(False))
     except queue.Empty:
-        data = {'type': 'INVALID', 'stamp': str(datetime.datetime.now())}
-    return jsonify(data)
+#         data = {'type': 'INVALID', 'stamp': str(datetime.datetime.now())}
+        print("test1(): Getting %d dicts" % len(datas))
+
+    return jsonify(datas)
 
 def producer(q):
+    datas = []
     while True:
         print(str(datetime.datetime.now()), ": producing more data ..")
         data = {'type': 'BPM', 'stamp': str(datetime.datetime.now())}
-        # datas.append(data)
         q.put(data)
         print("producer(): We have generated:", q.qsize(), "::", data)
         
-        time.sleep(3.3)
+        time.sleep(1.3)
 
 if __name__=="__main__":
     q = Queue()
