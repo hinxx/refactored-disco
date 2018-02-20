@@ -16,24 +16,50 @@
 
 $.ajaxSetup({ cache:false });
 
+var newFramesObj = {}
+
 $(document).ready(function() {
 
 // to be called from timeout function
 function callTest1() {
+	console.log("5s timeout expired..");
+	
 	$.ajax({
-		url: "http://localhost:5000/test1",
+		url: "http://localhost:5000/test1/id/1?cnt=123",
 			type: 'GET',
+			dataType: 'json',
 			success: function(res) {
-				console.log(res);
-				// alert(res);
+//				 alert(res);
+//				console.log(res);
+				console.log(typeof res);
+//				newFramesObj = JSON.parse(res);
+/*
+				$("#frames").text("");
+        $.each(res, function(index, element) {
+            $('#frames').append($('<div>', {
+                text: element
+            }));
+        });
+*/
+				$("#frames").text(JSON.stringify(res));
 			},
 			error: function(error) {
 				console.log(error);
 			}
 	});
+	
+	pull();
 }
 
-setTimeout(function() { callTest1(); }, 5000);
+function pull() {
+	console.log("starting 5s timeout..");
+	setTimeout(function() { callTest1(); }, 5000);
+}
+
+$("#pullbtn").click(function(){
+    $("#frames").text("Waiting for data..");
+    pull();
+});
 
 });
 
@@ -47,9 +73,17 @@ setTimeout(function() { callTest1(); }, 5000);
 <p>
 <p>
 
-<form action="/test1/limit=10/type=BPM" method="get">
+<form action="/test1/id/1" method="get">
 <input type="submit" value="Submit">
 </form>
+
+<hr>
+
+<button id="pullbtn" type="button">Pull!</button>
+
+<div id="frames">
+<p>Nothing yet ...
+</div>
 
 </body>
 </html>

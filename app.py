@@ -3,9 +3,9 @@ from flask import Flask, render_template, request, jsonify
 import datetime
 import json
 import time
-from multiprocessing import Process, Value, Queue
-import queue
+from multiprocessing import Process
 import sqlite3
+import numpy as np
 
 app = Flask(__name__)
 
@@ -13,21 +13,40 @@ app = Flask(__name__)
 def signUp():
     return render_template('index.html')
 
-@app.route('/test1/<input1>/<input2>', methods=['GET'])
-def test1(input1, input2):
-#    print("Called test1()\n")
-    print("input1:", input1)
-    print("input2:", input2)
+@app.route('/test1/id/<id>', methods=['GET'])
+#@app.route('/test1/diag/<diag>', methods=['GET'])
+#@app.route('/test1/diag/<diag>/pv/<pv>', methods=['GET'])
+def test1(id):
+    print("Called test1(): ID=", id, "\n")
+
+# DEBUG
+    print(dir(request))
+    print(request.args)
+    print(request.view_args)
+    #print(request.headers)
+    print(request.query_string)
+    print(request.remote_addr)
+    print(request.path)
+
+    cnt = 10
+    searchword = request.args.get('cnt', '')
+    print("searchword:", searchword)
+# DEBUG
 
     datas = []
     cons_cur = dbcon.cursor()
-    id = cons_cur.lastrowid
-
-    print("test1(): We have:", id)
+    
     cons_cur.execute("SELECT rowid,* FROM Frames ORDER BY rowid DESC LIMIT 10")
     rows = cons_cur.fetchall()
     for row in rows:
-        datas.append(row)
+        # print(type(row[3]))
+        r = {
+            'id': row[0],
+            'type': row[1],
+            'stamp': row[2],
+            'signal': json.loads(row[3])
+            }
+        datas.append(r)
         
     return jsonify(datas)
 
@@ -36,7 +55,14 @@ def producer():
 
     while True:
         print(str(datetime.datetime.now()), ": producing more data ..")
-        data = "INSERT INTO Frames VALUES('%s','%s')" % ('BPM', str(datetime.datetime.now()))
+
+        # generate noisy trace
+        pure = np.linspace(-1, 1, 100)
+        noise = np.random.normal(0, 1, pure.shape)
+        signal = pure + noise
+        jsignal = json.dumps(signal.tolist())
+
+        data = "INSERT INTO Frames VALUES('%s','%s','%s')" % ('BPM', str(datetime.datetime.now()), jsignal)
         prod_cur.execute(data)
         dbcon.commit()
         id = prod_cur.lastrowid
