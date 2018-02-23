@@ -6,6 +6,7 @@ import time
 from multiprocessing import Process
 import sqlite3
 import numpy as np
+import array
 
 app = Flask(__name__)
 
@@ -20,17 +21,17 @@ def test1(id):
     print("Called test1(): ID=", id, "\n")
 
 # DEBUG
-    print(dir(request))
-    print(request.args)
-    print(request.view_args)
-    #print(request.headers)
-    print(request.query_string)
-    print(request.remote_addr)
-    print(request.path)
-
-    cnt = 10
-    searchword = request.args.get('cnt', '')
-    print("searchword:", searchword)
+#     print(dir(request))
+#     print(request.args)
+#     print(request.view_args)
+#     #print(request.headers)
+#     print(request.query_string)
+#     print(request.remote_addr)
+#     print(request.path)
+# 
+#     cnt = 10
+#     searchword = request.args.get('cnt', '')
+#     print("searchword:", searchword)
 # DEBUG
 
     datas = []
@@ -39,15 +40,14 @@ def test1(id):
     cons_cur.execute("SELECT rowid,* FROM Frames ORDER BY rowid DESC LIMIT 10")
     rows = cons_cur.fetchall()
     for row in rows:
-        # print(type(row[3]))
         r = {
             'id': row[0],
             'type': row[1],
             'stamp': row[2],
-            'signal': json.loads(row[3])
+            'signal': memoryview(row[3]).tolist()
             }
         datas.append(r)
-        
+       
     return jsonify(datas)
 
 def producer():
@@ -60,13 +60,13 @@ def producer():
         pure = np.linspace(-1, 1, 100)
         noise = np.random.normal(0, 1, pure.shape)
         signal = pure + noise
-        jsignal = json.dumps(signal.tolist())
-
-        data = "INSERT INTO Frames VALUES('%s','%s','%s')" % ('BPM', str(datetime.datetime.now()), jsignal)
-        prod_cur.execute(data)
+        ablob = sqlite3.Binary(signal)
+        
+        sql = '''INSERT INTO Frames (type, stamp, signal) VALUES(?, ?, ?);'''
+        prod_cur.execute(sql, ['BPM', str(datetime.datetime.now()), ablob]) 
         dbcon.commit()
         id = prod_cur.lastrowid
-        print("producer(): We have generated:", data, 'with ROW ID: ', id)
+        print("producer(): We have generated data with ROW ID:", id)
         
         time.sleep(1.3)
 

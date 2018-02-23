@@ -1,4 +1,4 @@
 DROP TABLE IF EXISTS Frames;
-CREATE TABLE Frames(Type TEXT, Stamp TEXT, Signal TEXT);
+CREATE TABLE Frames(Type TEXT, Stamp TEXT, Signal BLOB);
 .schema
 .exit
