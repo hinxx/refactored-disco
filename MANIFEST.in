@@ -1,0 +1,3 @@
+graft webpv/templates
+graft webpv/static
+include webpv/schema.sql
