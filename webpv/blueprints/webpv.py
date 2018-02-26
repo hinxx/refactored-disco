@@ -43,13 +43,18 @@ def get_db():
     return g.sqlite_db
 
 
-@bp.route('/')
+@bp.route('/', methods=['GET', 'POST'])
 def show_entries():
-    db = get_db()
-    cur = db.execute('select title, text from entries order by id desc')
-    entries = cur.fetchall()
-    return render_template('show_entries.html', entries=entries)
-
+    if request.method == 'POST':
+        db = get_db()
+        cur = db.execute('select title, text from entries order by id desc')
+        entries = cur.fetchall()
+        return render_template('show_entries.html', entries=entries)
+    elif request.method == 'GET':
+        db = get_db()
+        cur = db.execute('SELECT rowid, * FROM Frames ORDER BY rowid DESC')
+        stats = cur.fetchall()
+        return render_template('stats.html', stats=stats)
 
 @bp.route('/add', methods=['POST'])
 def add_entry():
