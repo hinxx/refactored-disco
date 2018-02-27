@@ -43,10 +43,16 @@ In flask master checkout:
 
 pip install --editable .
 
+In flask-cors master checkout:
+
+pip install --editable .
 
 In this module checkout:
 
 pip install --editable .
 export FLASK_APP="webpv.factory:create_app()"
+export FLASK_DEBUG=1
+
 flask initdb
-flask run
+flask run --host=0.0.0.0
+

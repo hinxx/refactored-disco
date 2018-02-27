@@ -11,13 +11,21 @@
 """
 
 import os
+from multiprocessing import Process
+import datetime
+import time
+import sqlite3
+import array
+import numpy as np
 from flask import Flask, g
+from flask_cors import CORS
 from werkzeug.utils import find_modules, import_string
 from webpv.blueprints.webpv import init_db
 
 
 def create_app(config=None):
     app = Flask('webpv')
+    CORS(app)
 
     app.config.update(dict(
         DATABASE=os.path.join(app.root_path, 'webpv.db'),
@@ -32,6 +40,7 @@ def create_app(config=None):
     register_blueprints(app)
     register_cli(app)
     register_teardowns(app)
+    register_producers(app)
 
     return app
 
@@ -60,5 +69,62 @@ def register_teardowns(app):
     @app.teardown_appcontext
     def close_db(error):
         """Closes the database again at the end of the request."""
+        print("XXX: Calling close_db()..")
         if hasattr(g, 'sqlite_db'):
             g.sqlite_db.close()
+#     @app.teardown_appcontext
+#     def stop_producer(error):
+#         """Closes the database again at the end of the request."""
+#         print("XXX: Calling stop_producer()..")
+#         if hasattr(g, 'producer'):
+#             g.producer.join()
+
+def register_producers(app):
+    """Register all producer modules"""
+    with app.app_context():
+        if not hasattr(g, 'producer'):
+            g.producer = Process(target=producer)
+            # XXX: This messesup the CLI initdb call!!!
+            g.producer.start()
+
+def producer():
+    dbcon = sqlite3.connect('webpv/webpv.db')
+    prod_cur = dbcon.cursor()
+
+    while True:
+        print(str(datetime.datetime.now()), ": producing more data ..")
+
+        # generate noisy trace
+        pure = np.linspace(-1, 1, 14)
+        noise = np.random.normal(0, 1, pure.shape)
+        signalX = pure + noise
+        # make sure floats are properly encoded for BLOB!
+        a = array.array('f')
+        a.fromlist(signalX.tolist())
+        ablobX = sqlite3.Binary(a)
+        noise = np.random.normal(0, 1, pure.shape)
+        signalY = pure + noise
+        a = array.array('f')
+        a.fromlist(signalY.tolist())
+        ablobY = sqlite3.Binary(a)
+        noise = np.random.normal(0, 1, pure.shape)
+        signalP = pure + noise
+        a = array.array('f')
+        a.fromlist(signalP.tolist())
+        ablobP = sqlite3.Binary(a)
+        dt = datetime.datetime.now()
+        
+#         print("size of signalX:", len(signalX))
+#         print("size of signalY:", len(signalY))
+#         print("size of signalP:", len(signalP))
+        
+        sql = '''INSERT INTO Frames (PVName, TimeStamp, PVData) VALUES(?, ?, ?);'''
+        prod_cur.execute(sql, ['MEBT-010:PBI-BPM-010:Xpos', dt, ablobX])
+        prod_cur.execute(sql, ['MEBT-010:PBI-BPM-010:Ypos', str(dt), ablobY])
+        prod_cur.execute(sql, ['MEBT-010:PBI-BPM-010:Phase', str(dt), ablobP])
+        
+        dbcon.commit()
+        id = prod_cur.lastrowid
+        print("producer(): We have generated data with ROW ID:", id)
+        
+        time.sleep(1.3)

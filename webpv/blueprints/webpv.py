@@ -10,9 +10,12 @@
     :license: BSD, see LICENSE for more details.
 """
 
+import json
+import array
+import datetime
 from sqlite3 import dbapi2 as sqlite3
 from flask import Blueprint, request, session, g, redirect, url_for, abort, \
-     render_template, flash, current_app
+     render_template, flash, current_app, jsonify
 
 
 # create our blueprint :)
@@ -45,46 +48,90 @@ def get_db():
 
 @bp.route('/', methods=['GET', 'POST'])
 def show_entries():
+    print("request method:", request)
     if request.method == 'POST':
+        print("POST request is_json:", request.is_json)
+        print("POST request json:", request.get_json())
+        print("POST request:", request)
+        print("POST args:", request.args.to_dict())
+        print("POST view_args:", request.view_args)
+        print("POST form:", request.form.to_dict())
+        print("POST data:", request.data)
+
+        req = request.get_json()
+
+        # by default start of the time frame is 'now'
+        fromTime = str(datetime.datetime.now())
+        # by default end of the time frame is 'now' - 5 seconds
+        untilTime = str(datetime.datetime.now() - datetime.timedelta(seconds=3))
+        # client might have requested start and/or end of time frame
+        if 'FromWhen' is req:
+            fromTime = req['FromWhen']
+        if 'UntilWhen' is req:
+            untilTime = req['UntilWhen']
+        
         db = get_db()
-        cur = db.execute('select title, text from entries order by id desc')
-        entries = cur.fetchall()
-        return render_template('show_entries.html', entries=entries)
+        datas = []
+        for pv in req['PVs']:
+            sql = 'SELECT rowid,* FROM Frames ' \
+                'WHERE PVName = ? ' \
+                'AND TimeStamp <= ? ' \
+                'AND TimeStamp >= ? '\
+                'ORDER BY rowid'
+            cur = db.execute(sql, [pv, fromTime, untilTime])
+            rows = cur.fetchall()
+            for row in rows:
+                # make sure that floats are properly decoded from BLOB!
+                a = array.array('f')
+                a.frombytes(row[3])
+                r = {
+                    'Rowid': row[0],
+                    'PVName': row[1],
+                    'TimeStamp': row[2],
+                    'PVData': a.tolist()
+                    }
+                datas.append(r)
+        return jsonify(datas)
+
     elif request.method == 'GET':
-        db = get_db()
-        cur = db.execute('SELECT rowid, * FROM Frames ORDER BY rowid DESC')
-        stats = cur.fetchall()
-        return render_template('stats.html', stats=stats)
+        print("GET request:", request)
+#         db = get_db()
+#         cur = db.execute('SELECT rowid, * FROM Frames ORDER BY rowid DESC')
+#         stats = cur.fetchall()
+#         return render_template('stats.html', stats=stats)
+#     return "{ 'DODO': 'bird' }"
+#     return '{ "DODO": "bird" }'
+    return json.dumps(request.get_json())
 
-@bp.route('/add', methods=['POST'])
-def add_entry():
-    if not session.get('logged_in'):
-        abort(401)
-    db = get_db()
-    db.execute('insert into entries (title, text) values (?, ?)',
-               [request.form['title'], request.form['text']])
-    db.commit()
-    flash('New entry was successfully posted')
-    return redirect(url_for('webpv.show_entries'))
-
-
-@bp.route('/login', methods=['GET', 'POST'])
-def login():
-    error = None
-    if request.method == 'POST':
-        if request.form['username'] != current_app.config['USERNAME']:
-            error = 'Invalid username'
-        elif request.form['password'] != current_app.config['PASSWORD']:
-            error = 'Invalid password'
-        else:
-            session['logged_in'] = True
-            flash('You were logged in')
-            return redirect(url_for('webpv.show_entries'))
-    return render_template('login.html', error=error)
-
-
-@bp.route('/logout')
-def logout():
-    session.pop('logged_in', None)
-    flash('You were logged out')
-    return redirect(url_for('webpv.show_entries'))
+# @bp.route('/add', methods=['POST'])
+# def add_entry():
+#     if not session.get('logged_in'):
+#         abort(401)
+#     db = get_db()
+#     db.execute('insert into entries (title, text) values (?, ?)',
+#                [request.form['title'], request.form['text']])
+#     db.commit()
+#     flash('New entry was successfully posted')
+#     return redirect(url_for('webpv.show_entries'))
+# 
+# 
+# @bp.route('/login', methods=['GET', 'POST'])
+# def login():
+#     error = None
+#     if request.method == 'POST':
+#         if request.form['username'] != current_app.config['USERNAME']:
+#             error = 'Invalid username'
+#         elif request.form['password'] != current_app.config['PASSWORD']:
+#             error = 'Invalid password'
+#         else:
+#             session['logged_in'] = True
+#             flash('You were logged in')
+#             return redirect(url_for('webpv.show_entries'))
+#     return render_template('login.html', error=error)
+# 
+# 
+# @bp.route('/logout')
+# def logout():
+#     session.pop('logged_in', None)
+#     flash('You were logged out')
+#     return redirect(url_for('webpv.show_entries'))
