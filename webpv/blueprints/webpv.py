@@ -61,38 +61,9 @@ def show_entries():
         req = request.get_json()
 
         now = datetime.datetime.now()
-        # by default start of the time frame is 'now'
-        # fromTime = now - datetime.timedelta(seconds=3)
-        # by default end of the time frame is 'now' - 5 seconds
-        # untilTime = now
-        # client might have requested start and/or end of time frame
-#        if 'FromWhen' is req:
-#            # fromTime = req['FromWhen']
-#            # with microseconds    : datetime.datetime.strptime('2018-02-28 11:27:31.061988', '%Y-%m-%d %H:%M:%S.%f')
-#            # without microseconds : datetime.datetime.strptime('2018-02-28 11:27:31', '%Y-%m-%d %H:%M:%S')
-#            fromTime = datetime.datetime.strptime(req['FromWhen'], '%Y-%m-%d %H:%M:%S.%f')
-#        if 'UntilWhen' is req:
-#            # untilTime = req['UntilWhen']
-#            untilTime = datetime.datetime.strptime(req['UntilWhen'], '%Y-%m-%d %H:%M:%S.%f')
-#        
+
         # with microseconds    : datetime.datetime.strptime('2018-02-28 11:27:31.061988', '%Y-%m-%d %H:%M:%S.%f')
         # without microseconds : datetime.datetime.strptime('2018-02-28 11:27:31', '%Y-%m-%d %H:%M:%S')
-#        if 'FromWhen' in req:
-#            print('user supplied FromWhen: ', req['FromWhen'])
-#        if 'UntilWhen' in req:
-#            print('user supplied UntilWhen: ', req['UntilWhen'])
-#        if 'FromWhen' in req and 'UntilWhen' in req:
-#            fromTime = datetime.datetime.strptime(req['FromWhen'], '%Y-%m-%d %H:%M:%S')
-#            untilTime = datetime.datetime.strptime(req['UntilWhen'], '%Y-%m-%d %H:%M:%S')
-#        elif 'FromWhen' in req and 'UntilWhen' not in req:
-#            fromTime = datetime.datetime.strptime(req['FromWhen'], '%Y-%m-%d %H:%M:%S')
-#            untilTime = now
-#        elif 'FromWhen' not in req and 'UntilWhen' in req:
-#            untilTime = datetime.datetime.strptime(req['UntilWhen'], '%Y-%m-%d %H:%M:%S')
-#            fromTime = untilTime - datetime.timedelta(seconds=5)
-#        else:
-#            fromTime = now - datetime.timedelta(seconds=5)
-#            untilTime = now
         
         if 'UntilWhen' in req:
             untilTime = datetime.datetime.strptime(req['UntilWhen'], '%Y-%m-%d %H:%M:%S')
