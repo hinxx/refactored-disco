@@ -94,37 +94,58 @@ def producer():
     while True:
         print(str(datetime.datetime.now()), ": producing more data ..")
 
-        # generate noisy trace
-        pure = np.linspace(-1, 1, 14)
-        noise = np.random.normal(0, 1, pure.shape)
-        signalX = pure + noise
-        # make sure floats are properly encoded for BLOB!
-        a = array.array('f')
-        a.fromlist(signalX.tolist())
-        ablobX = sqlite3.Binary(a)
-        noise = np.random.normal(0, 1, pure.shape)
-        signalY = pure + noise
-        a = array.array('f')
-        a.fromlist(signalY.tolist())
-        ablobY = sqlite3.Binary(a)
-        noise = np.random.normal(0, 1, pure.shape)
-        signalP = pure + noise
-        a = array.array('f')
-        a.fromlist(signalP.tolist())
-        ablobP = sqlite3.Binary(a)
         dt = datetime.datetime.now()
-        
+
+        # generate noisy trace
+        pure = np.linspace(-1, 1, 300)
+
+        sql = '''INSERT INTO Frames (PVName, TimeStamp, PVData) VALUES(?, ?, ?);'''
+       
+        # XXX: make sure floats are properly encoded for BLOB!!!
+        for pv in [
+          'MEBT-010:PBI-BPM-010:Xpos', 'MEBT-010:PBI-BPM-010:Ypos', 'MEBT-010:PBI-BPM-010:Phase',
+          'MEBT-010:PBI-BPM-020:Xpos', 'MEBT-010:PBI-BPM-020:Ypos', 'MEBT-010:PBI-BPM-020:Phase',
+          'MEBT-010:PBI-BPM-030:Xpos', 'MEBT-010:PBI-BPM-030:Ypos', 'MEBT-010:PBI-BPM-030:Phase',]:
+          noise = np.random.normal(0, 1, pure.shape)
+          signal = pure + noise
+          a = array.array('f')
+          a.fromlist(signal.tolist())
+          ablob = sqlite3.Binary(a)
+          # print("size of signal", len(signal))
+          prod_cur.execute(sql, [pv, dt, ablob])
+
+#        noise = np.random.normal(0, 1, pure.shape)
+#        signalY = pure + noise
+#        a = array.array('f')
+#        a.fromlist(signalY.tolist())
+#        ablobY = sqlite3.Binary(a)
+#
+#        noise = np.random.normal(0, 1, pure.shape)
+#        signalP = pure + noise
+#        a = array.array('f')
+#        a.fromlist(signalP.tolist())
+#        ablobP = sqlite3.Binary(a)
+#        
 #         print("size of signalX:", len(signalX))
 #         print("size of signalY:", len(signalY))
 #         print("size of signalP:", len(signalP))
-        
-        sql = '''INSERT INTO Frames (PVName, TimeStamp, PVData) VALUES(?, ?, ?);'''
-        prod_cur.execute(sql, ['MEBT-010:PBI-BPM-010:Xpos', dt, ablobX])
-        prod_cur.execute(sql, ['MEBT-010:PBI-BPM-010:Ypos', str(dt), ablobY])
-        prod_cur.execute(sql, ['MEBT-010:PBI-BPM-010:Phase', str(dt), ablobP])
+#        
+#        sql = '''INSERT INTO Frames (PVName, TimeStamp, PVData) VALUES(?, ?, ?);'''
+#        prod_cur.execute(sql, ['MEBT-010:PBI-BPM-010:Xpos', dt, ablobX])
+#        prod_cur.execute(sql, ['MEBT-010:PBI-BPM-010:Ypos', str(dt), ablobY])
+#        prod_cur.execute(sql, ['MEBT-010:PBI-BPM-010:Phase', str(dt), ablobP])
+#
+#        prod_cur.execute(sql, ['MEBT-010:PBI-BPM-020:Xpos', dt, ablobX])
+#        prod_cur.execute(sql, ['MEBT-010:PBI-BPM-020:Ypos', str(dt), ablobY])
+#        prod_cur.execute(sql, ['MEBT-010:PBI-BPM-020:Phase', str(dt), ablobP])
+#        
+#        prod_cur.execute(sql, ['MEBT-010:PBI-BPM-030:Xpos', dt, ablobX])
+#        prod_cur.execute(sql, ['MEBT-010:PBI-BPM-030:Ypos', str(dt), ablobY])
+#        prod_cur.execute(sql, ['MEBT-010:PBI-BPM-030:Phase', str(dt), ablobP])
         
         dbcon.commit()
         id = prod_cur.lastrowid
         print("producer(): We have generated data with ROW ID:", id)
         
-        time.sleep(1.3)
+        time.sleep(3.0)
+

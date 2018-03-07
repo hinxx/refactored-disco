@@ -50,16 +50,23 @@ def get_db():
 def show_entries():
     print("request method:", request)
     if request.method == 'POST':
+        print("POST request content_length:", request.content_length)
         print("POST request is_json:", request.is_json)
-        print("POST request json:", request.get_json())
-        print("POST request:", request)
-        print("POST args:", request.args.to_dict())
-        print("POST view_args:", request.view_args)
-        print("POST form:", request.form.to_dict())
-        print("POST data:", request.data)
+#        print("POST request:", request)
+#        print("POST args:", request.args.to_dict())
+#        print("POST view_args:", request.view_args)
+#        print("POST form:", request.form.to_dict())
+#        print("POST data:", request.data)
 
+        if request.content_length == 0:
+          return '{ "Error": "Missing JSON encoded request"}'
+       
+        print("POST request json:", request.get_json())
         req = request.get_json()
 
+        if 'PVs' not in req:
+          return '{ "Error": "Missing JSON encoded \'PVs\' in request"}'
+          
         now = datetime.datetime.now()
 
         # with microseconds    : datetime.datetime.strptime('2018-02-28 11:27:31.061988', '%Y-%m-%d %H:%M:%S.%f')
