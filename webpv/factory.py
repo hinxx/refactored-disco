@@ -103,9 +103,9 @@ def producer():
        
         # XXX: make sure floats are properly encoded for BLOB!!!
         for pv in [
-          'MEBT-010:PBI-BPM-010:Xpos', 'MEBT-010:PBI-BPM-010:Ypos', 'MEBT-010:PBI-BPM-010:Phase',
-          'MEBT-010:PBI-BPM-020:Xpos', 'MEBT-010:PBI-BPM-020:Ypos', 'MEBT-010:PBI-BPM-020:Phase',
-          'MEBT-010:PBI-BPM-030:Xpos', 'MEBT-010:PBI-BPM-030:Ypos', 'MEBT-010:PBI-BPM-030:Phase',]:
+          'MEBT-010:PBI-BPM-001:Xpos', 'MEBT-010:PBI-BPM-001:Ypos', 'MEBT-010:PBI-BPM-001:Phase',
+          'MEBT-010:PBI-BPM-002:Xpos', 'MEBT-010:PBI-BPM-002:Ypos', 'MEBT-010:PBI-BPM-002:Phase',
+          'MEBT-010:PBI-BPM-003:Xpos', 'MEBT-010:PBI-BPM-003:Ypos', 'MEBT-010:PBI-BPM-003:Phase',]:
           noise = np.random.normal(0, 1, pure.shape)
           signal = pure + noise
           a = array.array('f')

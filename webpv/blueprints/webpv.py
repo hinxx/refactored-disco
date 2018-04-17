@@ -72,14 +72,14 @@ def show_entries():
         # with microseconds    : datetime.datetime.strptime('2018-02-28 11:27:31.061988', '%Y-%m-%d %H:%M:%S.%f')
         # without microseconds : datetime.datetime.strptime('2018-02-28 11:27:31', '%Y-%m-%d %H:%M:%S')
         
-        if 'UntilWhen' in req:
+        if 'UntilWhen' in req and len(req['UntilWhen']):
             untilTime = datetime.datetime.strptime(req['UntilWhen'], '%Y-%m-%d %H:%M:%S')
             print('user supplied UntilWhen: ', untilTime)
         else:
             untilTime = now
             print('using now() for UntilWhen: ', untilTime)
         
-        if 'FromWhen' in req:
+        if 'FromWhen' in req and len(req['FromWhen']):
             fromTime = datetime.datetime.strptime(req['FromWhen'], '%Y-%m-%d %H:%M:%S')
             print('user supplied FromWhen: ', fromTime)
         else:
