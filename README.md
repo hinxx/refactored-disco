@@ -63,10 +63,10 @@ POST http://hinkocmbp.esss.lu.se:5000
 Accept: application/json
 Content-Type: application/json
 
-{ "PVs": ["MEBT-010:PBI-BPM-010:Xpos" ]}
+{ "PVs": ["MEBT-010:PBI-BPM-001:Xpos" ]}
 
 Equivalent curl command (Replace <password> with real password):
-curl -i -H Accept:application/json -H Content-Type:application/json -X POST http://hinkocmbp.esss.lu.se:5000 -H Content-Type: application/json -d '{ "PVs": ["MEBT-010:PBI-BPM-010:Xpos" ]}'
+curl -i -H Accept:application/json -H Content-Type:application/json -X POST http://hinkocmbp.esss.lu.se:5000 -H Content-Type: application/json -d '{ "PVs": ["MEBT-010:PBI-BPM-001:Xpos" ]}'
 
 Responses:
 
@@ -78,7 +78,7 @@ Responses:
  -1.3055641651153564,
  ...
  ],
- "PVName": "MEBT-010:PBI-BPM-010:Xpos",
+ "PVName": "MEBT-010:PBI-BPM-001:Xpos",
  "Rowid": 683821,
  "TimeStamp": "2018-03-07 13:28:46.614998"
  },
@@ -88,7 +88,7 @@ Responses:
  -0.7258983850479126,
  ...
  ],
- "PVName": "MEBT-010:PBI-BPM-010:Xpos",
+ "PVName": "MEBT-010:PBI-BPM-001:Xpos",
  "Rowid": 683830,
  "TimeStamp": "2018-03-07 13:28:49.636052"
  },
