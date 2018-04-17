@@ -16,6 +16,7 @@ import datetime
 import time
 import sqlite3
 import array
+import pickle
 import numpy as np
 from flask import Flask, g
 from flask_cors import CORS
@@ -91,57 +92,58 @@ def producer():
     dbcon = sqlite3.connect('webpv/webpv.db')
     prod_cur = dbcon.cursor()
 
+    if not os.path.isdir('storage'):
+        os.mkdir('storage')
+
     while True:
         print(str(datetime.datetime.now()), ": producing more data ..")
 
         dt = datetime.datetime.now()
-
+        # create 'YYYYmmdd_HHMMSS_uuuuuu' filename format from current date&time w/ microseconds
+        file_name = dt.strftime("%Y%m%d_%H%M%S_%f.bin")
+        sql = '''INSERT INTO Frames (PVName, TimeStamp, DataPath) VALUES(?, ?, ?);'''
+        
         # generate noisy trace
         pure = np.linspace(-1, 1, 300)
-
-        sql = '''INSERT INTO Frames (PVName, TimeStamp, PVData) VALUES(?, ?, ?);'''
-       
-        # XXX: make sure floats are properly encoded for BLOB!!!
         for pv in [
           'MEBT-010:PBI-BPM-001:Xpos', 'MEBT-010:PBI-BPM-001:Ypos', 'MEBT-010:PBI-BPM-001:Phase',
           'MEBT-010:PBI-BPM-002:Xpos', 'MEBT-010:PBI-BPM-002:Ypos', 'MEBT-010:PBI-BPM-002:Phase',
           'MEBT-010:PBI-BPM-003:Xpos', 'MEBT-010:PBI-BPM-003:Ypos', 'MEBT-010:PBI-BPM-003:Phase',]:
-          noise = np.random.normal(0, 1, pure.shape)
-          signal = pure + noise
-          a = array.array('f')
-          a.fromlist(signal.tolist())
-          ablob = sqlite3.Binary(a)
-          # print("size of signal", len(signal))
-          prod_cur.execute(sql, [pv, dt, ablob])
+            noise = np.random.normal(0, 1, pure.shape)
+            signal = pure + noise
+            # save to path: pv/filename
+            path = os.path.join('storage', pv)
+            if not os.path.isdir(path):
+                os.mkdir(path)
+            path = os.path.join('storage', pv, file_name)
+            entry = array.array('f')
+            entry.fromlist(signal.tolist())
+            with open(path, 'wb') as fp:
+                pickle.dump(entry, fp)
+            fp.close()
+            # insert the path into the DB
+            prod_cur.execute(sql, [pv, dt, path])
 
-#        noise = np.random.normal(0, 1, pure.shape)
-#        signalY = pure + noise
-#        a = array.array('f')
-#        a.fromlist(signalY.tolist())
-#        ablobY = sqlite3.Binary(a)
-#
-#        noise = np.random.normal(0, 1, pure.shape)
-#        signalP = pure + noise
-#        a = array.array('f')
-#        a.fromlist(signalP.tolist())
-#        ablobP = sqlite3.Binary(a)
-#        
-#         print("size of signalX:", len(signalX))
-#         print("size of signalY:", len(signalY))
-#         print("size of signalP:", len(signalP))
-#        
-#        sql = '''INSERT INTO Frames (PVName, TimeStamp, PVData) VALUES(?, ?, ?);'''
-#        prod_cur.execute(sql, ['MEBT-010:PBI-BPM-010:Xpos', dt, ablobX])
-#        prod_cur.execute(sql, ['MEBT-010:PBI-BPM-010:Ypos', str(dt), ablobY])
-#        prod_cur.execute(sql, ['MEBT-010:PBI-BPM-010:Phase', str(dt), ablobP])
-#
-#        prod_cur.execute(sql, ['MEBT-010:PBI-BPM-020:Xpos', dt, ablobX])
-#        prod_cur.execute(sql, ['MEBT-010:PBI-BPM-020:Ypos', str(dt), ablobY])
-#        prod_cur.execute(sql, ['MEBT-010:PBI-BPM-020:Phase', str(dt), ablobP])
-#        
-#        prod_cur.execute(sql, ['MEBT-010:PBI-BPM-030:Xpos', dt, ablobX])
-#        prod_cur.execute(sql, ['MEBT-010:PBI-BPM-030:Ypos', str(dt), ablobY])
-#        prod_cur.execute(sql, ['MEBT-010:PBI-BPM-030:Phase', str(dt), ablobP])
+        # generate noisy intensity graph (aka image)
+        pure = np.linspace(0, 32768, 90000)
+        for pv in [
+          'MEBT-010:PBI-BPM-001:Img',
+          'MEBT-010:PBI-BPM-002:Img',
+          'MEBT-010:PBI-BPM-003:Img',]:
+            noise = np.random.normal(0, 32768, pure.shape)
+            signal = pure + noise
+            # save to path: pv/filename
+            path = os.path.join('storage', pv)
+            if not os.path.isdir(path):
+                os.mkdir(path)
+            path = os.path.join('storage', pv, file_name)
+            entry = array.array('f')
+            entry.fromlist(signal.tolist())
+            with open(path, 'wb') as fp:
+                pickle.dump(entry, fp)
+            fp.close()
+            # insert the path into the DB
+            prod_cur.execute(sql, [pv, dt, path])
         
         dbcon.commit()
         id = prod_cur.lastrowid

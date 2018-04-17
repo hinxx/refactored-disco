@@ -13,6 +13,7 @@
 import json
 import array
 import datetime
+import pickle
 from sqlite3 import dbapi2 as sqlite3
 from flask import Blueprint, request, session, g, redirect, url_for, abort, \
      render_template, flash, current_app, jsonify
@@ -99,57 +100,23 @@ def show_entries():
             cur = db.execute(sql, [pv, fromTime, untilTime])
             rows = cur.fetchall()
             for row in rows:
-                # make sure that floats are properly decoded from BLOB!
-                a = array.array('f')
-                a.frombytes(row[3])
+                entry = []
+                # print('opening binary file %s ..' % row[3])
+                with open(row[3], 'rb') as fp:
+                    entry = pickle.load(fp)
+                fp.close()
+                # print('binary file %s contents:\n%s' % (row[3], entry.tolist()))
+                
                 r = {
                     'Rowid': row[0],
                     'PVName': row[1],
                     'TimeStamp': row[2],
-                    'PVData': a.tolist()
+                    'PVData': entry.tolist()
                     }
                 datas.append(r)
         return jsonify(datas)
 
     elif request.method == 'GET':
         print("GET request:", request)
-#         db = get_db()
-#         cur = db.execute('SELECT rowid, * FROM Frames ORDER BY rowid DESC')
-#         stats = cur.fetchall()
-#         return render_template('stats.html', stats=stats)
-#     return "{ 'DODO': 'bird' }"
-#     return '{ "DODO": "bird" }'
-    return json.dumps(request.get_json())
 
-# @bp.route('/add', methods=['POST'])
-# def add_entry():
-#     if not session.get('logged_in'):
-#         abort(401)
-#     db = get_db()
-#     db.execute('insert into entries (title, text) values (?, ?)',
-#                [request.form['title'], request.form['text']])
-#     db.commit()
-#     flash('New entry was successfully posted')
-#     return redirect(url_for('webpv.show_entries'))
-# 
-# 
-# @bp.route('/login', methods=['GET', 'POST'])
-# def login():
-#     error = None
-#     if request.method == 'POST':
-#         if request.form['username'] != current_app.config['USERNAME']:
-#             error = 'Invalid username'
-#         elif request.form['password'] != current_app.config['PASSWORD']:
-#             error = 'Invalid password'
-#         else:
-#             session['logged_in'] = True
-#             flash('You were logged in')
-#             return redirect(url_for('webpv.show_entries'))
-#     return render_template('login.html', error=error)
-# 
-# 
-# @bp.route('/logout')
-# def logout():
-#     session.pop('logged_in', None)
-#     flash('You were logged out')
-#     return redirect(url_for('webpv.show_entries'))
+    return json.dumps(request.get_json())
