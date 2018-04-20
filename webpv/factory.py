@@ -17,12 +17,14 @@ import time
 import sqlite3
 import array
 import pickle
+import json
 import numpy as np
 from flask import Flask, g
 from flask_cors import CORS
 from werkzeug.utils import find_modules, import_string
 from webpv.blueprints.webpv import init_db
 
+g_producer = None
 
 def create_app(config=None):
     app = Flask('webpv')
@@ -33,7 +35,9 @@ def create_app(config=None):
         DEBUG=True,
         SECRET_KEY=b'_5#y2L"F4Q8z\n\xec]/',
         USERNAME='admin',
-        PASSWORD='default'
+        PASSWORD='default',
+        JSON_SORT_KEYS=False,
+        JSONIFY_PRETTYPRINT_REGULAR=False
     ))
     app.config.update(config or {})
     app.config.from_envvar('WEBPV_SETTINGS', silent=True)
@@ -41,8 +45,13 @@ def create_app(config=None):
     register_blueprints(app)
     register_cli(app)
     register_teardowns(app)
-    register_producers(app)
+#     register_producers(app)
+    app.before_first_request(register_producer)
 
+#     import pdb; pdb.set_trace();
+    
+    print('this is app.cli: %s' % str(app.cli.name))
+    
     return app
 
 
@@ -80,16 +89,35 @@ def register_teardowns(app):
 #         if hasattr(g, 'producer'):
 #             g.producer.join()
 
-def register_producers(app):
-    """Register all producer modules"""
-    with app.app_context():
-        if not hasattr(g, 'producer'):
-            g.producer = Process(target=producer)
-            # XXX: This messesup the CLI initdb call!!!
-            g.producer.start()
+
+# def register_producers(app):
+#     """Register all producer modules"""
+#     
+#     print('calling register_producers() ..')
+#     
+#     with app.app_context():
+#         if not hasattr(g, 'producer'):
+#             g.producer = Process(target=producer)
+#             # XXX: This messesup the CLI initdb call!!!
+#             g.producer.start()
+
+def register_producer():
+    print('calling register_producer() ..')
+#     with app.app_context():
+#         if not hasattr(g, 'producer'):
+#             g.producer = Process(target=producer)
+#             # XXX: This messesup the CLI initdb call!!!
+#             g.producer.start()
+    
+    global g_producer
+    if not g_producer:
+        g_producer = Process(target=producer)
+        g_producer.start()
 
 def producer():
-    dbcon = sqlite3.connect('webpv/webpv.db')
+    print('>> producer() called!!!!')
+    
+    dbcon = sqlite3.connect('webpv/webpv.db', timeout=10)
     prod_cur = dbcon.cursor()
 
     if not os.path.isdir('storage'):
@@ -105,10 +133,11 @@ def producer():
         
         # generate noisy trace
         pure = np.linspace(-1, 1, 300)
-        for pv in [
-          'MEBT-010:PBI-BPM-001:Xpos', 'MEBT-010:PBI-BPM-001:Ypos', 'MEBT-010:PBI-BPM-001:Phase',
-          'MEBT-010:PBI-BPM-002:Xpos', 'MEBT-010:PBI-BPM-002:Ypos', 'MEBT-010:PBI-BPM-002:Phase',
-          'MEBT-010:PBI-BPM-003:Xpos', 'MEBT-010:PBI-BPM-003:Ypos', 'MEBT-010:PBI-BPM-003:Phase',]:
+#        for pv in [
+#          'MEBT-010:PBI-BPM-001:Xpos', 'MEBT-010:PBI-BPM-001:Ypos', 'MEBT-010:PBI-BPM-001:Phase',
+#          'MEBT-010:PBI-BPM-002:Xpos', 'MEBT-010:PBI-BPM-002:Ypos', 'MEBT-010:PBI-BPM-002:Phase',
+#          'MEBT-010:PBI-BPM-003:Xpos', 'MEBT-010:PBI-BPM-003:Ypos', 'MEBT-010:PBI-BPM-003:Phase',]:
+        for pv in ['MEBT-010:PBI-BPM-001:Xpos']:
             noise = np.random.normal(0, 1, pure.shape)
             signal = pure + noise
             # save to path: pv/filename
@@ -116,32 +145,52 @@ def producer():
             if not os.path.isdir(path):
                 os.mkdir(path)
             path = os.path.join('storage', pv, file_name)
-            entry = array.array('f')
-            entry.fromlist(signal.tolist())
-            with open(path, 'wb') as fp:
-                pickle.dump(entry, fp)
+#             entry = array.array('f')
+#             entry.fromlist(signal.tolist())
+#             with open(path, 'wb') as fp:
+#                 pickle.dump(entry, fp)
+#             fp.close()
+
+            entry = signal.tolist()
+            with open(path, 'w') as fp:
+                json.dump(entry, fp)
             fp.close()
+
             # insert the path into the DB
             prod_cur.execute(sql, [pv, dt, path])
 
         # generate noisy intensity graph (aka image)
-        pure = np.linspace(0, 32768, 90000)
-        for pv in [
-          'MEBT-010:PBI-BPM-001:Img',
-          'MEBT-010:PBI-BPM-002:Img',
-          'MEBT-010:PBI-BPM-003:Img',]:
-            noise = np.random.normal(0, 32768, pure.shape)
+        pure = np.linspace(30000, 40000, 10000)
+#        for pv in [
+#          'MEBT-010:PBI-BPM-001:Img',
+#          'MEBT-010:PBI-BPM-002:Img',
+#          'MEBT-010:PBI-BPM-003:Img',]:
+        for pv in ['MEBT-010:PBI-BPM-001:Img']:
+#             signal = pure
+#             noise = np.random.normal(1000, 5000, pure.shape)
+            noise = np.random.randint(1111, 11111, pure.shape)
             signal = pure + noise
             # save to path: pv/filename
             path = os.path.join('storage', pv)
             if not os.path.isdir(path):
                 os.mkdir(path)
             path = os.path.join('storage', pv, file_name)
-            entry = array.array('f')
-            entry.fromlist(signal.tolist())
-            with open(path, 'wb') as fp:
-                pickle.dump(entry, fp)
+#             entry = array.array('H')
+#             entry.fromlist(signal.astype(np.uint16).tolist())
+            
+#             with open(path, 'wb') as fp:
+#                 pickle.dump(entry, fp)
+#             fp.close()
+#             with open(path, 'wb') as fp:
+#                 entry.tofile(fp)
+#             fp.close()
+
+            entry = signal.astype(np.uint16).tolist()
+#             print('entry is %s, len %d' % (type(entry), len(entry)))
+            with open(path, 'w') as fp:
+                json.dump(entry, fp)
             fp.close()
+            
             # insert the path into the DB
             prod_cur.execute(sql, [pv, dt, path])
         
@@ -149,5 +198,5 @@ def producer():
         id = prod_cur.lastrowid
         print("producer(): We have generated data with ROW ID:", id)
         
-        time.sleep(3.0)
+        time.sleep(10.0)
 

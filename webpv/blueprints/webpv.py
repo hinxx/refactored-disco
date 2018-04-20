@@ -14,10 +14,12 @@ import json
 import array
 import datetime
 import pickle
+import time
 from sqlite3 import dbapi2 as sqlite3
 from flask import Blueprint, request, session, g, redirect, url_for, abort, \
-     render_template, flash, current_app, jsonify
-
+     render_template, flash, current_app, jsonify, json, Response, after_this_request
+import gzip
+from io import BytesIO
 
 # create our blueprint :)
 bp = Blueprint('webpv', __name__)
@@ -49,12 +51,54 @@ def get_db():
 
 @bp.route('/', methods=['GET', 'POST'])
 def show_entries():
-    print("request method:", request)
+    # test adding a header after response is already built..
+    @after_this_request
+    def add_header(response):
+        response.headers['X-Foo'] = 'Parachute'
+        return response
+
+    # gzip compress the response
+    # XXX: this makes response time 10x longer
+    # XXX: this makes response length at least 1/2 smaller
+    @after_this_request
+    def zipper(response):
+        # use compression only if request requested it!
+        accept_encoding = request.headers.get('Accept-Encoding', '')
+        if 'gzip' not in accept_encoding.lower():
+            return response
+
+        response.direct_passthrough = False
+
+        if (response.status_code < 200 or
+            response.status_code >= 300 or
+            'Content-Encoding' in response.headers):
+            return response
+#         gzip_buffer = IO()
+        gzip_buffer = BytesIO()
+        gzip_file = gzip.GzipFile(mode='wb', fileobj=gzip_buffer)
+        gzip_file.write(response.data)
+        # remove spaces from JSON
+#         gzip_file.write(response.data.replace(' ', ''))
+        gzip_file.close()
+
+        response.data = gzip_buffer.getvalue()
+        response.headers['Content-Encoding'] = 'gzip'
+        response.headers['Vary'] = 'Accept-Encoding'
+        response.headers['Content-Length'] = len(response.data)
+
+        return response
+
+
+    print("request method:", request.method)
     if request.method == 'POST':
+        rss = datetime.datetime.now()
+
         print("POST request content_length:", request.content_length)
         print("POST request is_json:", request.is_json)
-#        print("POST request:", request)
-#        print("POST args:", request.args.to_dict())
+        print("POST request is_xhr:", request.is_xhr)
+        print("POST request header:", request.headers)
+#         print("POST request:", request)
+#         print("POST args:", request.args.to_dict())
 #        print("POST view_args:", request.view_args)
 #        print("POST form:", request.form.to_dict())
 #        print("POST data:", request.data)
@@ -84,8 +128,8 @@ def show_entries():
             fromTime = datetime.datetime.strptime(req['FromWhen'], '%Y-%m-%d %H:%M:%S')
             print('user supplied FromWhen: ', fromTime)
         else:
-            fromTime = untilTime - datetime.timedelta(seconds=50)
-            print('using UntilTime - 5s for FromWhen: ', fromTime)
+            fromTime = untilTime - datetime.timedelta(seconds=300)
+            print('using UntilTime - 300s for FromWhen: ', fromTime)
             
         print('calculated time frame\nFROM:  ', fromTime, '\nUNTIL: ', untilTime, '\nTOTAL: ', untilTime - fromTime)
         
@@ -99,22 +143,53 @@ def show_entries():
                 'ORDER BY rowid'
             cur = db.execute(sql, [pv, fromTime, untilTime])
             rows = cur.fetchall()
+            print('got %d rows from DB' % len(rows))
             for row in rows:
-                entry = []
+#                 print('>> row %d: %s' % (row[0], row[2]))
+                
+#                 entry = array.array('H')
                 # print('opening binary file %s ..' % row[3])
-                with open(row[3], 'rb') as fp:
-                    entry = pickle.load(fp)
+#                 with open(row[3], 'rb') as fp:
+#                     entry = pickle.load(fp)
+#                 fp.close()
+#                 with open(row[3], 'rb') as fp:
+#                     entry.fromfile(fp, 300)
+#                 fp.close()
+#                 print('started JSON load: %s' % (datetime.datetime.now()))
+#                 ss = datetime.datetime.now()
+                entry = []
+                with open(row[3], 'r') as fp:
+                    entry = json.load(fp)
                 fp.close()
+#                 print('ended JSON load: %s' % (datetime.datetime.now()))
+#                 ee = datetime.datetime.now()
+#                 print('JSON load took %s' % str(ee-ss))
                 # print('binary file %s contents:\n%s' % (row[3], entry.tolist()))
                 
                 r = {
                     'Rowid': row[0],
                     'PVName': row[1],
                     'TimeStamp': row[2],
-                    'PVData': entry.tolist()
+#                     'PVData': entry.tolist()
+                    'PVData': entry
                     }
                 datas.append(r)
-        return jsonify(datas)
+                
+#         datas = ['{"nothing": "nothing!"']
+#         return jsonify(datas)
+        
+        ree = datetime.datetime.now()
+#         datas = jsonify(datas)
+        print('request handle took %s (sending %d bytes)' % (str(ree-rss), len(json.dumps(datas))))
+        jdata = json.dumps(datas)
+#         jdata = json.dumps(datas).replace(' ', '')
+#         return jsonify(datas)
+        print('JSONified: %s' % jdata[0:70])
+#         return Response(jdata, status=200, mimetype='application/json')
+        response = Response(jdata, status=200, mimetype='application/json')
+        response = add_header(response)
+        response = zipper(response)
+        return response
 
     elif request.method == 'GET':
         print("GET request:", request)
